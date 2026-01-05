@@ -74,7 +74,6 @@ typedef struct {
     float pulse_phase;
 } Sun;
 
-
 Ship ship;
 Asteroid asteroids[MAX_ASTEROIDS];
 Bullet player_bullets[MAX_BULLETS];
@@ -87,12 +86,124 @@ Debris debris[NUM_DEBRIS];
 Planet planets[NUM_PLANETS];
 Sun sun;
 
+int asteroid_cnt = 0;
+int pbullet_cnt = 0;
+int ebullet_cnt = 0;
+int particle_cnt = 0;
+int oreblob_cnt = 0;
+int ufo_cnt = 0;
+int wave = 0;
+int ore = 0;
+bool laser_unlocked = false;
+int frame = 0;
+float scrollX = 0.0f;
+
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
+
+void thick_line(int x1, int y1, int x2, int y2, int thickness) {
+    if (thickness <= 1) {
+        SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
+        return;
+    }
+    int dx = x2 - x1, dy = y2 - y1;
+    float len = hypotf(dx, dy);
+    if (len < 1.0f) return;
+    float nx = -dy / len, ny = dx / len;
+    for (int t = -thickness/2; t <= thickness/2; t++) {
+        int ox = (int)(nx * t), oy = (int)(ny * t);
+        SDL_RenderDrawLine(renderer, x1 + ox, y1 + oy, x2 + ox, y2 + oy);
+    }
+}
+
+void spawn_asteroid(int size) {
+    if (asteroid_cnt >= MAX_ASTEROIDS) return;
+    Asteroid* a = &asteroids[asteroid_cnt++];
+    a->active = 1;
+    a->size = size;
+
+    float base_r = size == 3 ? 50.0f : size == 2 ? 28.0f : 14.0f;
+    a->vertices = 9 + rand() % 6;
+    for (int i = 0; i < a->vertices; i++) {
+        float ang = i * 2.0f * M_PI / a->vertices;
+        float vary = 0.7f + (rand() % 60) / 100.0f;
+        float r = base_r * vary;
+        a->offsets[i][0] = cosf(ang) * r;
+        a->offsets[i][1] = sinf(ang) * r;
+    }
+
+    int tries = 0;
+    do {
+        a->x = rand() % WINDOW_W;
+        a->y = rand() % WINDOW_H;
+    } while (hypotf(a->x - ship.x, a->y - ship.y) < 200 && ++tries < 60);
+
+    float speed = (3.8f - size * 0.9f) + wave * 0.4f;
+    float dir = rand() * 2 * M_PI / RAND_MAX;
+    a->vx = cosf(dir) * speed;
+    a->vy = sinf(dir) * speed;
+    a->spin = (rand() % 100 / 50.0f - 1.0f) * 0.06f;
+    a->angle = 0;
+}
 
 void init_game() {
     srand(time(NULL));
     ship = (Ship){WINDOW_W / 2.0f, WINDOW_H / 2.0f, 0, 0, -M_PI / 2, 4, 0, 0};
+    asteroid_cnt = pbullet_cnt = ebullet_cnt = particle_cnt = oreblob_cnt = ufo_cnt = 0;
+    ore = 0;
+    laser_unlocked = false;
+    wave = 1;
+    frame = 0;
+    scrollX = 0.0f;
+
+    int initial = 4 + wave;
+    for (int i = 0; i < initial; i++) spawn_asteroid(3);
+}
+
+void draw_ship() {
+    Uint8 alpha = ship.invincible ? 120 + (Uint8)(135 * (sinf(frame * 0.35f) * 0.5f + 0.5f)) : 255;
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, alpha);
+
+    float nx = ship.x + cosf(ship.angle) * 32;
+    float ny = ship.y + sinf(ship.angle) * 32;
+    float lx = ship.x + cosf(ship.angle + 2.7f) * 24;
+    float ly = ship.y + sinf(ship.angle + 2.7f) * 24;
+    float rx = ship.x + cosf(ship.angle - 2.7f) * 24;
+    float ry = ship.y + sinf(ship.angle - 2.7f) * 24;
+    float rearx = ship.x + cosf(ship.angle + M_PI) * 15;
+    float reary = ship.y + sinf(ship.angle + M_PI) * 15;
+
+    thick_line((int)nx, (int)ny, (int)lx, (int)ly, 5);
+    thick_line((int)lx, (int)ly, (int)rearx, (int)reary, 5);
+    thick_line((int)rearx, (int)reary, (int)rx, (int)ry, 5);
+    thick_line((int)rx, (int)ry, (int)nx, (int)ny, 5);
+}
+
+void draw_asteroid(Asteroid* a) { 
+    SDL_SetRenderDrawColor(renderer, 240, 240, 255, 255);
+    for (int i = 0; i < a->vertices; i++) {
+        int j = (i + 1) % a->vertices;
+        float ox1 = a->offsets[i][0];
+        float oy1 = a->offsets[i][1];
+        float ox2 = a->offsets[j][0];
+        float oy2 = a->offsets[j][1];
+        int x1 = (int)(a->x + ox1 * cosf(a->angle) - oy1 * sinf(a->angle));
+        int y1 = (int)(a->y + ox1 * sinf(a->angle) + oy1 * cosf(a->angle));
+        int x2 = (int)(a->x + ox2 * cosf(a->angle) - oy2 * sinf(a->angle));
+        int y2 = (int)(a->y + ox2 * sinf(a->angle) + oy2 * cosf(a->angle));
+        thick_line(x1, y1, x2, y2, 4);
+    }
+}
+
+void render() {
+    SDL_SetRenderDrawColor(renderer, 5, 5, 15, 255);
+    SDL_RenderClear(renderer);
+
+    for (int i = 0; i < asteroid_cnt; i++) if (asteroids[i].active) draw_asteroid(&asteroids[i]);
+
+    draw_ship();
+
+    SDL_RenderPresent(renderer);
 }
 
 int main(int argc, char* argv[]) {
@@ -109,6 +220,8 @@ int main(int argc, char* argv[]) {
         while (SDL_PollEvent(&ev)) {
             if (ev.type == SDL_QUIT) running = false;
         }
+
+        render();
 
         SDL_Delay(16);
     }
