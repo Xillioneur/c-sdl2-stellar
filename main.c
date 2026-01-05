@@ -25,14 +25,83 @@
 #define INVINCIBLE_FRAMES 140
 #define ORE_THRESHOLD 1000
 
+typedef struct {
+    float x, y, vx, vy, angle;
+    int lives, score, invincible;
+} Ship;
+
+typedef struct {
+    float x, y, vx, vy, angle, spin;
+    int size;
+    int vertices;
+    float offsets[14][2];
+    int active;
+} Asteroid;
+
+typedef struct {
+    float x, y, vx, vy;
+    int life, hits;
+    Uint32 color;
+    int active;
+} Bullet;
+
+typedef struct {
+    float x, y, vx, vy;
+    float life;
+    Uint32 color;
+    int active;
+} Particle;
+
+typedef struct {
+    float x, y;
+    float life;
+    int active;
+} OreBlob;
+
+typedef struct {
+    float x, y, vx;
+    int shoot_timer;
+    int active;
+} UFO;
+
+typedef struct { float base_x, base_y; int brightness, phase, size; } Star;
+typedef struct { float base_x, base_y; float vx; int size; } Debris;
+typedef struct { float base_x, base_y; float radius; Uint32 color; float spin; bool has_ring; } Planet;
+
+typedef struct {
+    float base_x, base_y;
+    float radius;
+    float pulse_phase;
+} Sun;
+
+
+Ship ship;
+Asteroid asteroids[MAX_ASTEROIDS];
+Bullet player_bullets[MAX_BULLETS];
+Bullet enemy_bullets[MAX_ENEMY_BULLETS];
+Particle particles[MAX_PARTICLES];
+OreBlob oreblobs[MAX_OREBLOBS];
+UFO ufos[2];
+Star stars[NUM_STARS];
+Debris debris[NUM_DEBRIS];
+Planet planets[NUM_PLANETS];
+Sun sun;
+
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
+
+void init_game() {
+    srand(time(NULL));
+    ship = (Ship){WINDOW_W / 2.0f, WINDOW_H / 2.0f, 0, 0, -M_PI / 2, 4, 0, 0};
+}
 
 int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
     window = SDL_CreateWindow("Stellar", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_W, WINDOW_H, 0);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
+    init_game();
 
     bool running = true;
     while (running) {
