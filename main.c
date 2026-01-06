@@ -112,7 +112,7 @@ void thick_line(int x1, int y1, int x2, int y2, int thickness) {
     float nx = -dy / len, ny = dx / len;
     for (int t = -thickness/2; t <= thickness/2; t++) {
         int ox = (int)(nx * t), oy = (int)(ny * t);
-        SDL_RenderDrawLine(renderer, x1 + ox, y1 + oy, x2 + ox, y2 + oy);
+        SDL_RenderDrawLine(renderer, x1 + ox, y1 + oy, x2 + ox, y2 );
     }
 }
 
