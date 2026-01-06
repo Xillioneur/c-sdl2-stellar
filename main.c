@@ -18,8 +18,8 @@
 #define NUM_DEBRIS 300
 #define NUM_PLANETS 7
 
-#define SHIP_ROT_SPEED 0.12f
-#define SHIP_THRUST 0.48f
+#define SHIP_ROT_SPEED 0.09f
+#define SHIP_THRUST 0.10f
 #define BULLET_SPEED 14.0f
 #define BULLET_LIFE 52
 #define INVINCIBLE_FRAMES 140
@@ -101,6 +101,11 @@ float scrollX = 0.0f;
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 
+void wrap(float* x, float* y) {
+    *x = fmodf(*x + WINDOW_W * 10, WINDOW_W);
+    *y = fmodf(*y + WINDOW_H * 10, WINDOW_H);
+}
+
 void thick_line(int x1, int y1, int x2, int y2, int thickness) {
     if (thickness <= 1) {
         SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
@@ -138,11 +143,11 @@ void spawn_asteroid(int size) {
         a->y = rand() % WINDOW_H;
     } while (hypotf(a->x - ship.x, a->y - ship.y) < 200 && ++tries < 60);
 
-    float speed = (3.8f - size * 0.9f) + wave * 0.4f;
+    float speed = (0.8f - size * 0.9f) + wave * 0.4f;
     float dir = rand() * 2 * M_PI / RAND_MAX;
     a->vx = cosf(dir) * speed;
     a->vy = sinf(dir) * speed;
-    a->spin = (rand() % 100 / 50.0f - 1.0f) * 0.06f;
+    a->spin = (rand() % 100 / 90.0f - 1.0f) * 0.06f;
     a->angle = 0;
 }
 
@@ -158,6 +163,36 @@ void init_game() {
 
     int initial = 4 + wave;
     for (int i = 0; i < initial; i++) spawn_asteroid(3);
+}
+
+void update() {
+    const Uint8* keys = SDL_GetKeyboardState(NULL);
+    int left = keys[SDL_SCANCODE_A] || keys[SDL_SCANCODE_LEFT];
+    int right = keys[SDL_SCANCODE_D] || keys[SDL_SCANCODE_RIGHT];
+    int thrust = keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_UP];
+
+    frame++;
+    scrollX += 1.0f + wave * 0.08f;
+    
+    if (left) ship.angle -= SHIP_ROT_SPEED;
+    if (right) ship.angle += SHIP_ROT_SPEED;
+    if (thrust) {
+        ship.vx += cosf(ship.angle) * SHIP_THRUST;
+        ship.vy += sinf(ship.angle) * SHIP_THRUST;
+    }
+
+    ship.x += ship.vx;
+    ship.y += ship.vy;
+    wrap(&ship.x, &ship.y);
+    if (ship.invincible > 0) ship.invincible--;
+
+    for (int i = 0; i < asteroid_cnt; i++) {
+        if (!asteroids[i].active) continue;
+        asteroids[i].x += asteroids[i].vx;
+        asteroids[i].y += asteroids[i].vy;
+        wrap(&asteroids[i].x, &asteroids[i].y);
+        asteroids[i].angle += asteroids[i].spin;
+    }
 }
 
 void draw_ship() {
@@ -200,7 +235,6 @@ void render() {
     SDL_RenderClear(renderer);
 
     for (int i = 0; i < asteroid_cnt; i++) if (asteroids[i].active) draw_asteroid(&asteroids[i]);
-
     draw_ship();
 
     SDL_RenderPresent(renderer);
@@ -221,6 +255,7 @@ int main(int argc, char* argv[]) {
             if (ev.type == SDL_QUIT) running = false;
         }
 
+        update();
         render();
 
         SDL_Delay(16);
