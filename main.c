@@ -18,8 +18,8 @@
 #define NUM_DEBRIS 300
 #define NUM_PLANETS 7
 
-#define SHIP_ROT_SPEED 0.09f
-#define SHIP_THRUST 0.10f
+#define SHIP_ROT_SPEED 0.12f
+#define SHIP_THRUST 0.14f
 #define BULLET_SPEED 14.0f
 #define BULLET_LIFE 52
 #define INVINCIBLE_FRAMES 140
@@ -165,7 +165,7 @@ void break_asteroid(int idx) {
             na->x = a->x;
             na->y = a->y;
             float dir = i * 2 * M_PI / pieces + (rand() % 100 - 50) * M_PI / 180.0f;
-            float spd = hypotf(a->vx, a->vy) * 1.6f + 3.2f;
+            float spd = hypotf(a->vx, a->vy) * 1.6f + 1.0f;
             na->vx = cosf(dir) * spd + a->vx *0.4f;
             na->vy = sinf(dir) * spd + a->vy * 0.4f;
         }
@@ -184,6 +184,14 @@ void init_game() {
 
     int initial = 4 + wave;
     for (int i = 0; i < initial; i++) spawn_asteroid(3);
+
+    for (int i = 0; i < NUM_STARS; i++) {
+        stars[i].base_x = (rand() % 80000) - 40000;
+        stars[i].base_y = rand() % WINDOW_H;
+        stars[i].brightness = 100 + rand() % 155;
+        stars[i].phase = rand() % 256;
+        stars[i].size = 1 + (rand() % 3);
+    }
 }
 
 float distance(float x1, float y1, float x2, float y2) {
@@ -351,6 +359,22 @@ void draw_asteroid(Asteroid* a) {
 void render() {
     SDL_SetRenderDrawColor(renderer, 5, 5, 15, 255);
     SDL_RenderClear(renderer);
+    
+    // twinkling stars
+    for (int i = 0; i < NUM_STARS; i++) {
+        float px = stars[i].base_x - scrollX * 0.15f;
+        px = fmodf(px + 100000, 200000) - 100000;
+        if (px < -50 || px > WINDOW_W + 50) continue;
+        float tw = 0.6f + 0.4f * sinf(frame * 0.07f + stars[i].phase);
+        int br = (int)(stars[i].brightness * tw);
+        SDL_SetRenderDrawColor(renderer, br, br, 255, 255);
+        int sx = (int)px;
+        int sy = (int)stars[i].base_y;
+        for (int s = -stars[i].size; s <= stars[i].size; s++) {
+            SDL_RenderDrawPoint(renderer, sx + s, sy);
+            SDL_RenderDrawPoint(renderer, sx, sy + s);
+        }
+    }
 
     // asteroids
     for (int i = 0; i < asteroid_cnt; i++) if (asteroids[i].active) draw_asteroid(&asteroids[i]);
