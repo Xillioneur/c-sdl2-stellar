@@ -151,6 +151,27 @@ void spawn_asteroid(int size) {
     a->angle = 0;
 }
 
+void break_asteroid(int idx) {
+    Asteroid* a = &asteroids[idx];
+    int new_size = a->size - 1;
+    ship.score += (4 - a->size) * 80;
+
+    // TODO: Add explosion
+    if (new_size >= 1) {
+        int pieces = 2 + rand() % 2;
+        for (int i = 0; i < pieces; i++) {
+            spawn_asteroid(new_size);
+            Asteroid* na = &asteroids[asteroid_cnt - 1];
+            na->x = a->x;
+            na->y = a->y;
+            float dir = i * 2 * M_PI / pieces + (rand() % 100 - 50) * M_PI / 180.0f;
+            float spd = hypotf(a->vx, a->vy) * 1.6f + 3.2f;
+            na->vx = cosf(dir) * spd + a->vx *0.4f;
+            na->vy = sinf(dir) * spd + a->vy * 0.4f;
+        }
+    } 
+}
+
 void init_game() {
     srand(time(NULL));
     ship = (Ship){WINDOW_W / 2.0f, WINDOW_H / 2.0f, 0, 0, -M_PI / 2, 4, 0, 0};
@@ -163,6 +184,14 @@ void init_game() {
 
     int initial = 4 + wave;
     for (int i = 0; i < initial; i++) spawn_asteroid(3);
+}
+
+float distance(float x1, float y1, float x2, float y2) {
+    float dx = x1 - x2;
+    float dy = y1 - y2;
+    if (fabsf(dx) > WINDOW_W / 2) dx -= (dx > 0 ? WINDOW_W : -WINDOW_W);
+    if (fabsf(dy) > WINDOW_H / 2) dy -= (dy > 0 ? WINDOW_H : -WINDOW_H);
+    return hypotf(dx, dy);
 }
 
 void update() {
@@ -223,6 +252,26 @@ void update() {
         b->y += b->vy;
         wrap(&b->x, &b->y);
         if (--b->life <= 0) b->active = 0;
+    }
+
+    for (int bi = 0; bi < MAX_BULLETS; bi++) {
+        Bullet* pb = &player_bullets[bi];
+        if (!pb->active) continue;
+        bool hit_something = false;
+        for (int ai = 0; ai < asteroid_cnt; ai++) {
+            Asteroid* a = &asteroids[ai];
+            if (!a->active) continue;
+            float rad = a->size == 3 ? 50 : a->size == 2 ? 28 : 14;
+            if (distance(pb->x, pb->y, a->x, a->y) < rad + 8) {
+                if (--pb->hits <= 0) { pb->active = 0; hit_something = true; }
+                break_asteroid(ai);
+                asteroids[ai] = asteroids[--asteroid_cnt];
+                ai--;
+                if (hit_something) break;
+            }
+        }
+        if (hit_something) continue;
+        // TODO: Check collision with UFOs
     }
 }
 
