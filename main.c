@@ -170,6 +170,11 @@ void update() {
     int left = keys[SDL_SCANCODE_A] || keys[SDL_SCANCODE_LEFT];
     int right = keys[SDL_SCANCODE_D] || keys[SDL_SCANCODE_RIGHT];
     int thrust = keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_UP];
+    static int prev_space = 0;
+    int space = keys[SDL_SCANCODE_SPACE];
+    int fire = space && !prev_space;
+    prev_space = space;
+
 
     frame++;
     scrollX += 1.0f + wave * 0.08f;
@@ -179,6 +184,23 @@ void update() {
     if (thrust) {
         ship.vx += cosf(ship.angle) * SHIP_THRUST;
         ship.vy += sinf(ship.angle) * SHIP_THRUST;
+    }
+
+    if (fire) {
+        int slot = pbullet_cnt;
+        if (slot >= MAX_BULLETS) slot = rand() % MAX_BULLETS;
+        Bullet* b = &player_bullets[slot];
+        if (pbullet_cnt < MAX_BULLETS) pbullet_cnt++;
+        b->active = 1;
+        b->x = ship.x + cosf(ship.angle) * 28;
+        b->y = ship.y + sinf(ship.angle) * 28;
+        float bs = BULLET_SPEED * (laser_unlocked ? 1.5f : 1.0f);
+        b->vx = cosf(ship.angle) * bs + ship.vx;
+        b->vy = sinf(ship.angle) * bs + ship.vy;
+        b->life = BULLET_LIFE;
+        b->hits = laser_unlocked ? 3 : 1;
+        b->color = laser_unlocked ? 0xFF3366FF : 0xFFFFFFFF;
+        // TODO: Add explosion()
     }
 
     ship.x += ship.vx;
@@ -192,6 +214,15 @@ void update() {
         asteroids[i].y += asteroids[i].vy;
         wrap(&asteroids[i].x, &asteroids[i].y);
         asteroids[i].angle += asteroids[i].spin;
+    }
+
+    for (int i = 0; i < MAX_BULLETS; i++) {
+        Bullet* b = &player_bullets[i];
+        if (!b->active) continue;
+        b->x += b->vx;
+        b->y += b->vy;
+        wrap(&b->x, &b->y);
+        if (--b->life <= 0) b->active = 0;
     }
 }
 
@@ -234,7 +265,23 @@ void render() {
     SDL_SetRenderDrawColor(renderer, 5, 5, 15, 255);
     SDL_RenderClear(renderer);
 
+    // asteroids
     for (int i = 0; i < asteroid_cnt; i++) if (asteroids[i].active) draw_asteroid(&asteroids[i]);
+
+    // bullets
+    for (int i = 0; i < MAX_BULLETS; i++) {
+        Bullet* b = &player_bullets[i];
+        if (!b->active) continue;
+        int alpha = 200 + (int)(55 * sinf(frame * 0.2f));
+        SDL_SetRenderDrawColor(renderer, (b->color>>16)&255, (b->color>>8)&255, b->color&255, alpha);
+        int bx = (int)b->x, by = (int)b->y;
+        for (int d = -3; d <= 3; d++) {
+            SDL_RenderDrawPoint(renderer, bx + d, by);
+            SDL_RenderDrawPoint(renderer, bx, by + d);
+        }
+    }
+
+
     draw_ship();
 
     SDL_RenderPresent(renderer);
