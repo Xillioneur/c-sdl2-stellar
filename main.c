@@ -192,6 +192,11 @@ void init_game() {
         stars[i].phase = rand() % 256;
         stars[i].size = 1 + (rand() % 3);
     }
+
+    sun.base_x = WINDOW_W * 0.75f;
+    sun.base_y = WINDOW_H * 0.3f;
+    sun.radius = 120.0f;
+    sun.pulse_phase = 0.0f;
 }
 
 float distance(float x1, float y1, float x2, float y2) {
@@ -374,6 +379,24 @@ void render() {
             SDL_RenderDrawPoint(renderer, sx + s, sy);
             SDL_RenderDrawPoint(renderer, sx, sy + s);
         }
+    }
+
+    // Sun with pulse and corona
+    float sun_pulse = 1.0f + 0.15f * sinf(sun.pulse_phase);
+    float sun_r = sun.radius * sun_pulse;
+    SDL_SetRenderDrawColor(renderer, 255, 255, 200, 100);
+    for (int r = (int)sun_r + 60; r > (int)sun_r + 20; r -= 15) {
+        for (int dy = -r; dy <= r; dy += 10) {
+            int hw = (int)sqrtf(r*r - dy*dy);
+            SDL_RenderDrawLine(renderer, (int)sun.base_x - hw, (int)(sun.base_y + dy),
+                                (int)sun.base_x + hw, (int)(sun.base_y + dy));
+        }
+    }
+    SDL_SetRenderDrawColor(renderer, 255, 240, 150, 255);
+    for (int dy = -sun_r; dy <= sun_r; dy += 6) {
+        int hw = (int)sqrtf(sun_r*sun_r - dy*dy);
+        SDL_RenderDrawLine(renderer, (int)sun.base_x - hw, (int)(sun.base_y + dy),
+                            (int)sun.base_x + hw, (int)(sun.base_y + dy));
     }
 
     // asteroids
