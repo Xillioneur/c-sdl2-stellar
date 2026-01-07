@@ -273,6 +273,44 @@ void update() {
         if (hit_something) continue;
         // TODO: Check collision with UFOs
     }
+
+    if (ship.invincible == 0) {
+        bool hit = false;
+        // TODO: Check if enemy bullets hit the player
+        if (!hit) {
+            for (int i = 0; i < asteroid_cnt; i++) {
+                Asteroid* a = &asteroids[i];
+                if (a->active) {
+                    float rad = a->size == 3 ? 50 : a->size == 2 ? 28 : 14;
+                    if (distance(a->x, a->y, ship.x, ship.y) < rad + 24) {
+                        break_asteroid(i);
+                        asteroids[i] = asteroids[--asteroid_cnt];
+                        hit = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (hit) {
+            ship.lives--;
+            ship.invincible = INVINCIBLE_FRAMES;
+            ship.vx = ship.vy = 0;
+            ship.x = WINDOW_W / 2.0f;
+            ship.y = WINDOW_H / 2.0f;
+            // TODO: Add explosion
+            if (ship.lives <= 0) {
+                printf("Game Over! Score: %d | Wave: %d | Ore Collected: %d\n", ship.score, wave, ore);
+                init_game();
+            }
+        }
+
+        if (asteroid_cnt == 0) {
+            // TODO: Laser Cannon
+            wave++;
+            int new_asts = 4 + wave * 2;
+            for (int i = 0; i < new_asts; i++) spawn_asteroid(3);
+        }
+    } 
 }
 
 void draw_ship() {
