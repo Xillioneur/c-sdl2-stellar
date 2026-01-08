@@ -471,6 +471,22 @@ void render() {
             SDL_RenderDrawLine(renderer, (int)(px - hw), (int)(p->base_y + dy),
                                 (int)(px + hw), (int)(p->base_y + dy));
         }
+        // Rim glow
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 100);
+        for (int dy = -r; dy <= r; dy += 15) {
+            int hw = (int)sqrtf(r*r - dy*dy) + 8;
+            SDL_RenderDrawLine(renderer, (int)(px - hw), (int)(p->base_y + dy),
+                                (int)(px + hw), (int)(p->base_y + dy));
+        }
+        // Rings for some planets
+        if (p->has_ring) {
+            SDL_SetRenderDrawColor(renderer, 220, 220, 255, 120);
+            int ring_w = r / 3;
+            for (int off = -ring_w; off <= ring_w; off += 6) {
+                SDL_RenderDrawLine(renderer, (int)(px - r*1.6f), (int)(p->base_y + off),
+                                    (int)(px + r*1.6f), (int)(p->base_y + off));
+            }
+        }
     }
 
     // asteroids
