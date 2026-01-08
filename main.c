@@ -106,6 +106,40 @@ void wrap(float* x, float* y) {
     *y = fmodf(*y + WINDOW_H * 10, WINDOW_H);
 }
 
+void spawn_particle(float x, float y, float vx, float vy, Uint32 color, float life) {
+    if (particle_cnt >= MAX_PARTICLES) return;
+    particles[particle_cnt++] = (Particle){x, y, vx, vy, life, color, 1};
+
+}
+
+void thrust_flame() {
+    float rear = ship.angle + M_PI;
+    float px = ship.x + cosf(rear) * 24;
+    float py = ship.y + sinf(rear) * 24;
+    for (int i = 0; i < 14; i++) {
+        float ang = rear + (rand() % 90 - 45) * 0.018f;
+        float spd = 7.0f + (rand() % 70) / 10.0f;
+        Uint32 c = (rand() % 2 == 0) ? 0xFFFFAAFF : 0xFFFFFFFF;
+        spawn_particle(px, py,
+                    cosf(ang) * spd + ship.vx * 0.3f,
+                    sinf(ang) * spd + ship.vy * 0.3f,
+                    c, 25 + rand() % 20);
+    }
+}
+
+void trail_emit() {
+    float speed = hypotf(ship.vx, ship.vy);
+    if (speed < 4.0f || frame % 2 != 0) return;
+    float rear = atan2f(ship.vy, ship.vx) + M_PI;
+    float px = ship.x + cosf(rear) * 22;
+    float py = ship.y + sinf(rear) * 22;
+    for (int i = 0; i < 5; i++) {
+        float ang = rear + (rand() % 80 - 40) * 0.015f;
+        float spd = 2.0f + speed * 0.35f;
+        spawn_particle(px, py, cosf(ang) * spd, sinf(ang) * spd, 0xCCEEFFFF, 30 + rand() % 25);
+    }
+}
+
 void thick_line(int x1, int y1, int x2, int y2, int thickness) {
     if (thickness <= 1) {
         SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
@@ -281,7 +315,9 @@ void update() {
     if (thrust) {
         ship.vx += cosf(ship.angle) * SHIP_THRUST;
         ship.vy += sinf(ship.angle) * SHIP_THRUST;
+        thrust_flame();
     }
+    trail_emit();
 
     if (fire) {
         int slot = pbullet_cnt;
@@ -320,6 +356,19 @@ void update() {
         b->y += b->vy;
         wrap(&b->x, &b->y);
         if (--b->life <= 0) b->active = 0;
+    }
+
+    for (int i = particle_cnt - 1; i >= 0; i--) {
+        Particle* p = &particles[i];
+        p->x += p->vx;
+        p->y += p->vy;
+        p->vy += 0.08f;
+        p->life -= 1.0f;
+        if (p->life <= 0) {
+            particles[i] = particles[--particle_cnt];
+        } else {
+            wrap(&p->x, &p->y);
+        }
     }
 
     for (int bi = 0; bi < MAX_BULLETS; bi++) {
@@ -487,6 +536,20 @@ void render() {
                                     (int)(px + r*1.6f), (int)(p->base_y + off));
             }
         }
+    }
+
+    // particles
+    for (int i = 0; i < particle_cnt; i++) {
+        Particle* p = &particles[i];
+        int alpha = (int)(255 * (p->life / 60.0f));
+        if (alpha < 30) continue;
+        SDL_SetRenderDrawColor(renderer, (p->color>>16)&255, (p->color>>8)&255, p->color&255, alpha);
+        int px = (int)p->x, py = (int)p->y;
+        SDL_RenderDrawPoint(renderer, px, py);
+        SDL_RenderDrawPoint(renderer, px+1, py);
+        SDL_RenderDrawPoint(renderer, px-1, py);
+        SDL_RenderDrawPoint(renderer, px, py+1);
+        SDL_RenderDrawPoint(renderer, px, py-1);
     }
 
     // asteroids
