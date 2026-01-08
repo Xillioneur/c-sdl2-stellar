@@ -447,6 +447,22 @@ void draw_ship() {
     thick_line((int)lx, (int)ly, (int)rearx, (int)reary, 5);
     thick_line((int)rearx, (int)reary, (int)rx, (int)ry, 5);
     thick_line((int)rx, (int)ry, (int)nx, (int)ny, 5);
+
+    if (hypotf(ship.vx, ship.vy) > 2.0f && (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W])) {
+        SDL_SetRenderDrawColor(renderer, 255, 255, 180, 240);
+        float base_ang = ship.angle + M_PI;
+        for (int i = 0; i < 8; i++) {
+            float ang = base_ang + (rand() % 100 - 50) * 0.009f;
+            float len = 40 + rand() % 40;
+            thick_line((int)rearx, (int)reary,
+                        (int)(rearx + cosf(ang) * len),
+                        (int)(reary + sinf(ang) * len), 4);
+        }
+        SDL_SetRenderDrawColor(renderer, 255, 220, 100, 255);
+        thick_line((int)rearx, (int)reary,
+                    (int)(rearx + cosf(base_ang) * 35),
+                    (int)(reary + sinf(base_ang) * 35), 8);
+    }
 }
 
 void draw_asteroid(Asteroid* a) { 
