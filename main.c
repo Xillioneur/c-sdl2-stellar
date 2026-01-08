@@ -217,9 +217,9 @@ void update() {
     int fire = space && !prev_space;
     prev_space = space;
 
-
     frame++;
     scrollX += 1.0f + wave * 0.08f;
+    sun.pulse_phase += 0.015f;
     
     if (left) ship.angle -= SHIP_ROT_SPEED;
     if (right) ship.angle += SHIP_ROT_SPEED;
