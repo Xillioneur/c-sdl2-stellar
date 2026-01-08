@@ -269,6 +269,12 @@ void init_game() {
         stars[i].phase = rand() % 256;
         stars[i].size = 1 + (rand() % 3);
     }
+    for (int i = 0; i < NUM_DEBRIS; i++) {
+        debris[i].base_x = (rand() % 100000) - 50000;
+        debris[i].base_y = rand() % WINDOW_H;
+        debris[i].vx = 0.3f + (rand() % 70)/100.0f;
+        debris[i].size = 1 + rand() % 3;
+    }
 
     for (int i = 0; i < NUM_PLANETS; i++) {
         generate_planet(&planets[i]);
@@ -501,6 +507,18 @@ void render() {
         }
     }
 
+    // drifting debris
+    for (int i = 0; i < NUM_DEBRIS; i++) {
+        float px = debris[i].base_x - scrollX * 0.5f;
+        px = fmodf(px + 150000, 300000) - 150000;
+        if (px < - 30 || px > WINDOW_W + 30) continue;
+        int g = 120 + (int)(debris[i].vx * 200 + sinf(frame * 0.05f + i) * 40);
+        SDL_SetRenderDrawColor(renderer, g, g, 255, 220);
+        for(int s = 0; s < debris[i].size * 2; s++) {
+            SDL_RenderDrawPoint(renderer, (int)px + s, (int)debris[i].base_y);
+        }
+    }
+
     // Sun with pulse and corona
     float sun_pulse = 1.0f + 0.15f * sinf(sun.pulse_phase);
     float sun_r = sun.radius * sun_pulse;
@@ -583,7 +601,6 @@ void render() {
             SDL_RenderDrawPoint(renderer, bx, by + d);
         }
     }
-
 
     draw_ship();
 
