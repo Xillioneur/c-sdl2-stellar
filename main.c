@@ -172,6 +172,49 @@ void break_asteroid(int idx) {
     } 
 }
 
+void generate_planet(Planet* p) {
+    int tries = 0;
+    bool good = false;
+    while (!good && tries < 100) {
+        float orbit_radius = 150 + powf(M_E, tries * 0.03f) * (200 + rand() % 600);
+        float angle = (rand() % 360) * M_PI / 180.0f;
+        p->base_x = sun.base_x + cosf(angle) * orbit_radius;
+        p->base_y = sun.base_y + sinf(angle) * orbit_radius * 0.6f;
+        p->radius = 30 + rand() % 30;
+
+        int hue = rand() % 360;
+        float sat = 0.6f + (rand() % 40)/100.0f;
+        float val = 0.8f + (rand() % 20)/100.0f;
+        float c = val * sat;
+        float hp = hue / 60.0f;
+        float x = c * (1 - fabsf(fmodf(hp, 2) - 1));
+        Uint8 r,g,b;
+        if (hp < 1) { r = c*255; g = x*255; b = 0; }
+        else if (hp < 2) { r = x*255; g = c*255; b = 0; }
+        else if (hp < 3) { r = 0; g = c*255; b = x*255; }
+        else if (hp < 4) { r = 0; g = x*255; b = c*255; }
+        else if (hp < 5) { r = x*255; g = 0; b = c*255; }
+        else { r = c*255; g = 0; b = x*255; }
+        p->color = (r << 16) | (g << 8) | b | 0xFF;
+        p->spin = 0.0f;
+        p->has_ring = rand() % 3 == 0;
+
+        good = true;
+        for (int i = 0; i < NUM_PLANETS; i++) {
+            if (&planets[i] == p) continue;
+            float dx = planets[i].base_x - p->base_x;
+            float dy = planets[i].base_y - p->base_y;
+            float dist = hypotf(dx, dy);
+            float min_dist = planets[i].radius + p->radius + 250.0f;
+            if (dist < min_dist) {
+                good = false;
+                break;
+            }
+        }
+        tries++;
+    }
+}
+
 void init_game() {
     srand(time(NULL));
     ship = (Ship){WINDOW_W / 2.0f, WINDOW_H / 2.0f, 0, 0, -M_PI / 2, 4, 0, 0};
@@ -191,6 +234,10 @@ void init_game() {
         stars[i].brightness = 100 + rand() % 155;
         stars[i].phase = rand() % 256;
         stars[i].size = 1 + (rand() % 3);
+    }
+
+    for (int i = 0; i < NUM_PLANETS; i++) {
+        generate_planet(&planets[i]);
     }
 
     sun.base_x = WINDOW_W * 0.75f;
@@ -220,6 +267,14 @@ void update() {
     frame++;
     scrollX += 1.0f + wave * 0.08f;
     sun.pulse_phase += 0.015f;
+
+    // Planets
+    for (int i = 0; i < NUM_PLANETS; i++) {
+        planets[i].base_x -= 0.12f + wave * 0.008f;
+        if (planets[i].base_x < -500) {
+            generate_planet(&planets[i]);
+        }
+    }
     
     if (left) ship.angle -= SHIP_ROT_SPEED;
     if (right) ship.angle += SHIP_ROT_SPEED;
@@ -397,6 +452,25 @@ void render() {
         int hw = (int)sqrtf(sun_r*sun_r - dy*dy);
         SDL_RenderDrawLine(renderer, (int)sun.base_x - hw, (int)(sun.base_y + dy),
                             (int)sun.base_x + hw, (int)(sun.base_y + dy));
+    }
+
+    // distant planets 
+    for (int i = 0; i < NUM_PLANETS; i++) {
+        Planet* p = &planets[i];
+        float px = p->base_x;
+        if (px < -300 || px > WINDOW_W + 300) continue;
+
+        p->spin += 0.002f;
+        int r = (int)p->radius;
+        for (int dy = -r; dy <= r; dy += 5) {
+            int hw = (int)sqrtf(r*r - dy*dy);
+            float swirl = sinf(dy * 0.03f + p->spin * 4);
+            int alpha = 160 + (int)(95 * swirl);
+            Uint32 c = p->color;
+            SDL_SetRenderDrawColor(renderer, (c>>16)&255, (c>>8)&255, c&255, alpha);
+            SDL_RenderDrawLine(renderer, (int)(px - hw), (int)(p->base_y + dy),
+                                (int)(px + hw), (int)(p->base_y + dy));
+        }
     }
 
     // asteroids
