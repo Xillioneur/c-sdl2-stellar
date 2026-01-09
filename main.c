@@ -505,12 +505,27 @@ void update() {
             }
         }
         if (hit_something) continue;
-        // TODO: Check collision with UFOs
+        for (int ui = 0; ui < ufo_cnt; ui++) {
+            if (ufos[ui].active && distance(pb->x, pb->y, ufos[ui].x, ufos[ui].y) < 40) {
+                pb->active = 0;
+                ship.score += 500;
+                explosion(ufos[ui].x, ufos[ui].y, 3, 0xAAFFFFAA);
+                ufos[ui].active = 0;
+                ufo_cnt--;
+            }
+        }
     }
 
     if (ship.invincible == 0) {
         bool hit = false;
-        // TODO: Check if enemy bullets hit the player
+        for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
+            if (enemy_bullets[i].active && distance(enemy_bullets[i].x, enemy_bullets[i].y, ship.x, ship.y) < 25) {
+                enemy_bullets[i].active = 0;
+                hit = true;
+                break;
+            }
+        }
+
         if (!hit) {
             for (int i = 0; i < asteroid_cnt; i++) {
                 Asteroid* a = &asteroids[i];
@@ -539,7 +554,11 @@ void update() {
         }
 
         if (asteroid_cnt == 0) {
-            // TODO: Laser Cannon
+            if (ore >= ORE_THRESHOLD && !laser_unlocked) {
+                laser_unlocked = true;
+                ore -= ORE_THRESHOLD;
+                printf("*** LASER CANNON ONLINE ***\n");
+            }
             wave++;
             int new_asts = 4 + wave * 2;
             for (int i = 0; i < new_asts; i++) spawn_asteroid(3);
