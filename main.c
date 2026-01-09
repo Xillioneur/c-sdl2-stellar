@@ -232,6 +232,16 @@ void break_asteroid(int idx) {
     }
 }
 
+void spawn_ufo() {
+    if (ufo_cnt >= 2) return;
+    UFO* u = &ufos[ufo_cnt++];
+    u->active = 1;
+    u->y = 100 + rand() % (WINDOW_H - 200);
+    u->vx = (rand() % 2 ? 1.0f : -1.0f) * (3.8f + wave * 0.4f);
+    u->x = (u->vx > 0 ? -120 : WINDOW_W + 120);
+    u->shoot_timer = 50 + rand() % 70;
+}
+
 void generate_planet(Planet* p) {
     int tries = 0;
     bool good = false;
@@ -389,6 +399,15 @@ void update() {
         if (--b->life <= 0) b->active = 0;
     }
 
+    for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
+        Bullet* b = &enemy_bullets[i];
+        if (!b->active) continue;
+        b->x += b->vx;
+        b->y += b->vy;
+        wrap(&b->x, &b->y);
+        if (--b->life <= 0) b->active = 0;
+    }
+
     for (int i = particle_cnt - 1; i >= 0; i--) {
         Particle* p = &particles[i];
         p->x += p->vx;
@@ -412,6 +431,38 @@ void update() {
             oreblobs[i] = oreblobs[--oreblob_cnt];
         }
     }
+
+    for (int i = 0; i < ufo_cnt; i++) {
+        UFO* u = &ufos[i];
+        if (!u->active) continue;
+        u->x += u->vx;
+        if (u->x < -150 || u->x > WINDOW_W + 150) {
+            u->active = 0;
+            ufo_cnt--;
+        }
+        if (--u->shoot_timer <= 0) {
+            if (ebullet_cnt < MAX_ENEMY_BULLETS) {
+                Bullet* b = &enemy_bullets[ebullet_cnt++];
+                b->active = 1;
+                b->x = u->x;
+                b->y = u->y;
+                b->color = 0xFF8888FF;
+                float dx  = ship.x - u->x;
+                float dy = ship.y - u->y;
+                float d = hypotf(dx, dy);
+                if (d > 0) { dx /= d; dy /= d; }
+                float ang = atan2f(dy, dx) + (rand() % 80 - 40)/40.0f * (M_PI/180);
+                float spd = 6.5f + wave * 0.4f;
+                b->vx = cosf(ang) * spd;
+                b->vy = sinf(ang) * spd;
+                b->life = 140;
+                b->hits = 1;
+            }
+            u->shoot_timer = 40 + rand() % 60;
+        }
+    }
+
+    if (ufo_cnt < 1 && asteroid_cnt > 2 && rand() % (700 - wave * 30) == 0) spawn_ufo();
 
     for (int bi = 0; bi < MAX_BULLETS; bi++) {
         Bullet* pb = &player_bullets[bi];
@@ -648,6 +699,27 @@ void render() {
         for (int d = -3; d <= 3; d++) {
             SDL_RenderDrawPoint(renderer, bx + d, by);
             SDL_RenderDrawPoint(renderer, bx, by + d);
+        }
+    }
+
+    // Enemy bullets
+    SDL_SetRenderDrawColor(renderer, 255, 160, 160, 255);
+    for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
+        if (enemy_bullets[i].active) {
+            int bx = (int)enemy_bullets[i].x, by = (int)enemy_bullets[i].y;
+            for (int d = -2; d <= 2; d++) SDL_RenderDrawPoint(renderer, bx + d, by + d);
+        }
+    }
+
+    // UFOS
+    for (int i = 0; i < ufo_cnt; i++) {
+        if (!ufos[i].active) continue;
+        float ux = ufos[i].x;
+        SDL_SetRenderDrawColor(renderer, 180, 255, 220, 255);
+        thick_line((int)(ux - 40), (int)ufos[i].y, (int)(ux + 40), (int)ufos[i].y, 5);
+        for (int off = -30; off <= 30; off += 10) {
+            int h = (int)sqrtf(900 - off*off);
+            thick_line((int)(ux - h), (int)(ufos[i].y - 22), (int)(ux + h), (int)(ufos[i].y - 22), 4);
         }
     }
 
