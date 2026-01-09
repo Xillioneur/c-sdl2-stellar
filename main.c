@@ -750,6 +750,32 @@ void render() {
     draw_ship();
     draw_lives();
 
+    // Ore bar
+    int bar_x = 70 + 4*55;
+    int bar_y = 40;
+    int bar_w = 180;
+    int bar_h = 14;
+    SDL_SetRenderDrawColor(renderer, 40, 60, 80, 240);  
+    SDL_RenderFillRect(renderer, &(SDL_Rect){bar_x-4, bar_y-4, bar_w+8, bar_h+8});
+    int fill = (int)((ore % 1000) / 1000.0f * bar_w);
+    SDL_SetRenderDrawColor(renderer, 100, 255, 180, 255);
+    SDL_RenderFillRect(renderer, &(SDL_Rect){bar_x, bar_y, fill, bar_h});
+    if (ore % 1000 > 800) {
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 200);
+        thick_line(bar_x-5, bar_y-5, bar_x+bar_w+5, bar_y-5, 3);
+        thick_line(bar_x-5, bar_y+bar_h+5, bar_x+bar_w+5, bar_y+bar_h+5, 3);
+    }
+
+    // Laser indicator
+    if (laser_unlocked) {
+        SDL_SetRenderDrawColor(renderer, 255, 80, 80, 255);
+        int ix = WINDOW_W - 100;
+        int iy = 40;
+        thick_line(ix-30, iy, ix+30, iy, 7);
+        thick_line(ix+20, iy-8, ix+35, iy-8, 4);
+        thick_line(ix+20, iy+8, ix+35, iy+8, 4);
+    }
+
     SDL_RenderPresent(renderer);
 }
 
