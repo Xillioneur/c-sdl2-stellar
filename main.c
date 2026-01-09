@@ -330,6 +330,30 @@ float distance(float x1, float y1, float x2, float y2) {
     return hypotf(dx, dy);
 }
 
+void draw_lives() {
+    for (int i = 0; i < ship.lives; i++) {
+        float cx = 60 + i * 55;
+        float cy = 50;
+        float angle = -M_PI / 2.0f;
+        int sz = 15;
+        
+        float nx = cx + cosf(angle) * sz;
+        float ny = cy + sinf(angle) * sz;
+        float lx = cx + cosf(angle + 2.5f) * sz * 0.7f;
+        float ly = cy + sinf(angle + 2.5f) * sz * 0.7f;
+        float rx = cx + cosf(angle - 2.5f) * sz * 0.7f;
+        float ry = cy + sinf(angle - 2.5f) * sz * 0.7f;
+        float rear = cx + cosf(angle + M_PI) * sz * 0.5f;
+        float reary = cy + sinf(angle + M_PI) * sz * 0.5f;
+
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        thick_line((int)nx, (int)ny, (int)lx, (int)ly, 4);
+        thick_line((int)lx, (int)ly, (int)rear, (int)reary, 4);
+        thick_line((int)rear, (int)reary, (int)rx, (int)ry, 4);
+        thick_line((int)rx, (int)ry, (int)nx, (int)ny, 4);
+    }
+}
+
 void update() {
     const Uint8* keys = SDL_GetKeyboardState(NULL);
     int left = keys[SDL_SCANCODE_A] || keys[SDL_SCANCODE_LEFT];
@@ -724,6 +748,7 @@ void render() {
     }
 
     draw_ship();
+    draw_lives();
 
     SDL_RenderPresent(renderer);
 }
