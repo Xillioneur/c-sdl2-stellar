@@ -112,6 +112,17 @@ void spawn_particle(float x, float y, float vx, float vy, Uint32 color, float li
 
 }
 
+void explosion(float x, float y, int intensity, Uint32 base_color) {
+    int count = 20 + intensity * 25;
+    for (int i = 0; i < count; i++) {
+        float ang = (float)i / count * 2 * M_PI + (rand() % 70 - 35) * 0.01f;
+        float speed = 3.0f + (rand() % 100) / 20.0f * intensity;
+        Uint32 c = base_color;
+        if (rand() % 3 == 0) c = 0xFFFFFFFF;
+        spawn_particle(x, y, cosf(ang) * speed, sinf(ang) * speed, c, 40 + rand() % 40);
+    }
+}
+
 void thrust_flame() {
     float rear = ship.angle + M_PI;
     float px = ship.x + cosf(rear) * 24;
@@ -185,12 +196,25 @@ void spawn_asteroid(int size) {
     a->angle = 0;
 }
 
+void spawn_oreblobs(float x, float y, int count) {
+    for (int i = 0; i < count && oreblob_cnt < MAX_OREBLOBS; i++) {
+        float ang = rand() * 2 * M_PI / RAND_MAX;
+        float dist = 15 + rand() % 30;
+        OreBlob* ob = &oreblobs[oreblob_cnt++];
+        ob->x = x + cosf(ang) * dist;
+        ob->y = y + sinf(ang) * dist;
+        ob->life = 160 + rand() % 60;
+        ob->active = 1;
+    }
+}
+
 void break_asteroid(int idx) {
     Asteroid* a = &asteroids[idx];
     int new_size = a->size - 1;
     ship.score += (4 - a->size) * 80;
 
-    // TODO: Add explosion
+    explosion(a->x, a->y, a->size, 0xFFFFEEFF);
+
     if (new_size >= 1) {
         int pieces = 2 + rand() % 2;
         for (int i = 0; i < pieces; i++) {
@@ -199,11 +223,13 @@ void break_asteroid(int idx) {
             na->x = a->x;
             na->y = a->y;
             float dir = i * 2 * M_PI / pieces + (rand() % 100 - 50) * M_PI / 180.0f;
-            float spd = hypotf(a->vx, a->vy) * 1.6f + 1.0f;
-            na->vx = cosf(dir) * spd + a->vx *0.4f;
+            float spd = hypotf(a->vx, a->vy) * 1.6f + 3.2f;
+            na->vx = cosf(dir) * spd + a->vx * 0.4f;
             na->vy = sinf(dir) * spd + a->vy * 0.4f;
         }
-    } 
+    } else {
+        spawn_oreblobs(a->x, a->y, 3 + rand() % 5);
+    }
 }
 
 void generate_planet(Planet* p) {
@@ -339,7 +365,6 @@ void update() {
         b->life = BULLET_LIFE;
         b->hits = laser_unlocked ? 3 : 1;
         b->color = laser_unlocked ? 0xFF3366FF : 0xFFFFFFFF;
-        // TODO: Add explosion()
     }
 
     ship.x += ship.vx;
@@ -374,6 +399,17 @@ void update() {
             particles[i] = particles[--particle_cnt];
         } else {
             wrap(&p->x, &p->y);
+        }
+    }
+
+    for (int i = oreblob_cnt - 1; i >- 0; i--) {
+        OreBlob* ob = &oreblobs[i];
+        ob->life -= 1.0f;
+        if (ob->life <= 0 || distance(ob->x, ob->y, ship.x, ship.y) < 30) {
+            if (distance(ob->x, ob->y, ship.x, ship.y) < 30) {
+                ore += 10;
+            }
+            oreblobs[i] = oreblobs[--oreblob_cnt];
         }
     }
 
@@ -420,7 +456,7 @@ void update() {
             ship.vx = ship.vy = 0;
             ship.x = WINDOW_W / 2.0f;
             ship.y = WINDOW_H / 2.0f;
-            // TODO: Add explosion
+            explosion(ship.x, ship.y, 4, 0xFF6666FF);
             if (ship.lives <= 0) {
                 printf("Game Over! Score: %d | Wave: %d | Ore Collected: %d\n", ship.score, wave, ore);
                 init_game();
@@ -572,7 +608,20 @@ void render() {
         }
     }
 
-    // particles
+    // Ore blobs
+    for (int i = 0; i < oreblob_cnt; i++) {
+        if (!oreblobs[i].active) continue;
+        int alpha = (int)(255 * (oreblobs[i].life / 200.0f));
+        SDL_SetRenderDrawColor(renderer, 100, 255, 200, alpha);
+        int ox = (int)oreblobs[i].x;
+        int oy = (int)oreblobs[i].y;
+        for (int d = 0; d < 8; d++) {
+            float ang = d * M_PI / 4;
+            SDL_RenderDrawLine(renderer, ox, oy, (int)(ox + cosf(ang)*10), (int)(oy + sinf(ang)*10));
+        }
+    }
+
+    // Particles
     for (int i = 0; i < particle_cnt; i++) {
         Particle* p = &particles[i];
         int alpha = (int)(255 * (p->life / 60.0f));
