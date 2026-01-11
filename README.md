@@ -10,7 +10,7 @@ Get ready for one that will be 1,500 lines of code. And one that will be 2,000 l
 of code total. Hopefully it works out. Will have to see what happens with Grok and how it supports big games. Maybe I'll move to a codebase based AI that will help me code an entire codebase for free. This is good for now. Check it out. We made it together for free in the span of a few hours.
 
 ```bash
-gcc main.c -o game.o -lSDL2 -lm && ./game.o
+gcc main.c -lSDL2 -lm -o game.o && ./game.o
 ```
 
 
